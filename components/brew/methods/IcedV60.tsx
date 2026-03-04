@@ -357,6 +357,7 @@ export function IcedV60() {
             totalSeconds={bloomDuration}
             size={180}
             label="seconds"
+            isRunning={isTimerRunning}
           />
         </div>
       )}
