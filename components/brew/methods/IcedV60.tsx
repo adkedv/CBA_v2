@@ -298,7 +298,8 @@ export function IcedV60() {
         <h2 className="font-serif text-xl font-bold text-brand-espresso mb-4">3. Get Ready</h2>
         <div className="space-y-2">
           {checklist.map((key) => (
-            <div
+            <button
+              type="button"
               key={key}
               onClick={() => setChecked((c) => ({ ...c, [key]: !c[key] }))}
               className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${checked[key] ? 'bg-brand-amber/20 text-brand-brown/60' : 'bg-brand-tan/10'}`}
@@ -327,7 +328,7 @@ export function IcedV60() {
                     ? `Grind ${brewConfig.coffeeWeight}g of coffee`
                     : checklistLabels[key]}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
