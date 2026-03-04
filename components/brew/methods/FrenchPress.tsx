@@ -1,0 +1,297 @@
+'use client'
+import { useState, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { CircularTimer } from '@/components/ui/CircularTimer'
+import { getRecipesByMethod } from '@/lib/recipes/barista-recipes'
+import type { Recipe } from '@/lib/recipes/types'
+
+type BrewPhase = 'setup' | 'brewing' | 'complete'
+
+function getStored<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const item = window.localStorage.getItem(key)
+    return item ? (JSON.parse(item) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function formatTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s === 0 ? `${m}m` : `${m}m ${s}s`
+}
+
+const RECIPES = getRecipesByMethod('french-press')
+
+export function FrenchPress() {
+  const [selectedSlug, setSelectedSlug] = useState<string>(() =>
+    getStored('cba_frenchpress_recipe', RECIPES[0]?.slug ?? ''),
+  )
+  const [coffeeGrams, setCoffeeGrams] = useState<number>(() =>
+    getStored('cba_frenchpress_coffee', 30),
+  )
+  const [phase, setPhase] = useState<BrewPhase>('setup')
+  const [stepIndex, setStepIndex] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const recipe: Recipe = RECIPES.find((r) => r.slug === selectedSlug) ?? (RECIPES[0] as Recipe)
+  const scale = recipe.coffeeGrams > 0 ? coffeeGrams / recipe.coffeeGrams : 1
+
+  const scaledSteps = recipe.steps.map((s) => ({
+    ...s,
+    waterGrams: s.waterGrams > 0 ? Math.round(s.waterGrams * scale) : 0,
+  }))
+  const totalWater = Math.round(recipe.totalWaterGrams * scale)
+
+  useEffect(() => {
+    localStorage.setItem('cba_frenchpress_recipe', selectedSlug)
+  }, [selectedSlug])
+
+  useEffect(() => {
+    localStorage.setItem('cba_frenchpress_coffee', JSON.stringify(coffeeGrams))
+  }, [coffeeGrams])
+
+  useEffect(() => {
+    if (phase !== 'brewing') return
+    const step = scaledSteps[stepIndex]
+    if (!step || step.durationSeconds === 0) return
+
+    intervalRef.current = setInterval(() => {
+      setElapsed((e) => {
+        if (e + 1 >= step.durationSeconds) {
+          clearInterval(intervalRef.current!)
+          return step.durationSeconds
+        }
+        return e + 1
+      })
+    }, 1000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [phase, stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleStart() {
+    setPhase('brewing')
+    setStepIndex(0)
+    setElapsed(0)
+  }
+
+  function handleNextStep() {
+    if (stepIndex + 1 >= scaledSteps.length) {
+      setPhase('complete')
+    } else {
+      setStepIndex((i) => i + 1)
+      setElapsed(0)
+    }
+  }
+
+  function handleReset() {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    setPhase('setup')
+    setStepIndex(0)
+    setElapsed(0)
+  }
+
+  const currentStep = scaledSteps[stepIndex]
+  const stepProgress =
+    currentStep && currentStep.durationSeconds > 0 ? elapsed / currentStep.durationSeconds : 0
+
+  // ── SETUP ─────────────────────────────────────────────────────────────────
+  if (phase === 'setup') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-serif text-3xl font-bold text-brand-espresso">French Press Guide</h2>
+          <p className="text-brand-brown/70 mt-1">
+            Full-bodied and rich. A forgiving method with a slow, meditative pace.
+          </p>
+        </div>
+
+        {RECIPES.length > 1 && (
+          <Card>
+            <h3 className="font-serif text-xl font-bold text-brand-espresso mb-4">
+              1. Choose a Recipe
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              {RECIPES.map((r) => (
+                <button
+                  key={r.slug}
+                  onClick={() => setSelectedSlug(r.slug)}
+                  className={`text-left p-4 rounded-lg border-2 transition-colors ${
+                    selectedSlug === r.slug
+                      ? 'border-brand-brown bg-brand-tan/20'
+                      : 'border-transparent bg-brand-tan/10 hover:bg-brand-tan/20'
+                  }`}
+                >
+                  <div className="font-semibold text-brand-espresso">{r.name}</div>
+                  <div className="text-sm text-brand-brown/60 mt-0.5">by {r.author}</div>
+                  <div className="text-sm text-brand-brown/70 mt-1 leading-snug">
+                    {r.description}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <h3 className="font-serif text-xl font-bold text-brand-espresso mb-4">
+            {RECIPES.length > 1 ? '2.' : '1.'} Set Your Dose
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-brand-brown/80 mb-1">
+                Coffee (g)
+              </label>
+              <input
+                type="number"
+                min={10}
+                max={80}
+                value={coffeeGrams}
+                onChange={(e) => setCoffeeGrams(Math.max(10, Number(e.target.value)))}
+                className="w-full p-3 font-bold text-lg text-brand-espresso bg-brand-tan/20 rounded-lg border border-transparent focus:border-brand-brown focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-brand-brown/80 mb-1">
+                Water (g)
+              </label>
+              <div className="w-full p-3 font-bold text-lg text-brand-espresso bg-brand-tan/10 rounded-lg">
+                {totalWater}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-sm text-brand-brown/60 space-y-0.5">
+            <div>Ratio: 1:{(totalWater / coffeeGrams).toFixed(1)}</div>
+            <div>Temp: {recipe.waterTempC}°C · Grind: {recipe.grindSize}</div>
+            <div>Total time: ~{formatTime(recipe.totalTimeSeconds)}</div>
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-serif text-xl font-bold text-brand-espresso mb-2">
+            Key Tip
+          </h3>
+          <p className="text-sm text-brand-brown/70 mb-4">
+            Do <strong>not</strong> plunge fully. After grounds settle, slowly pour through the mesh as a filter. This eliminates sludge.
+          </p>
+          <Button onClick={handleStart} className="w-full">
+            Start Brewing
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  // ── COMPLETE ──────────────────────────────────────────────────────────────
+  if (phase === 'complete') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-serif text-3xl font-bold text-brand-espresso">Pour &amp; Enjoy</h2>
+          <p className="text-brand-brown/70 mt-1">Pour slowly through the mesh — don&apos;t plunge fully.</p>
+        </div>
+        <Card>
+          <div className="text-center py-6">
+            <div className="text-6xl mb-4">☕</div>
+            <p className="text-brand-brown/80 mb-1">
+              {coffeeGrams}g coffee · {totalWater}g water
+            </p>
+            <p className="text-sm text-brand-brown/60">{recipe.grindSize}</p>
+          </div>
+          <Button onClick={handleReset} variant="secondary" className="w-full">
+            Brew Again
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  // ── BREWING ───────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-serif text-3xl font-bold text-brand-espresso">{recipe.name}</h2>
+          <p className="text-brand-brown/60 text-sm mt-0.5">by {recipe.author}</p>
+        </div>
+        <button onClick={handleReset} className="text-brand-brown/40 hover:text-brand-brown text-sm">
+          Reset
+        </button>
+      </div>
+
+      <div className="flex gap-1.5">
+        {scaledSteps.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i < stepIndex ? 'bg-brand-brown' : i === stepIndex ? 'bg-brand-amber' : 'bg-brand-brown/20'
+            }`}
+          />
+        ))}
+      </div>
+
+      {currentStep && (
+        <Card>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 mr-4">
+              <div className="text-xs font-medium text-brand-brown/50 uppercase tracking-wide mb-1">
+                Step {stepIndex + 1} of {scaledSteps.length}
+              </div>
+              <h3 className="font-serif text-xl font-bold text-brand-espresso">
+                {currentStep.label}
+              </h3>
+              {currentStep.waterGrams > 0 && (
+                <div className="text-brand-brown/70 mt-1">
+                  Pour <strong>{currentStep.waterGrams}g</strong>
+                </div>
+              )}
+              {currentStep.durationSeconds > 0 && (
+                <div className="text-brand-brown/50 text-sm mt-1">
+                  Wait {formatTime(currentStep.durationSeconds)}
+                </div>
+              )}
+            </div>
+            {currentStep.durationSeconds > 0 && (
+              <CircularTimer
+                seconds={currentStep.durationSeconds}
+                elapsed={elapsed}
+                progress={stepProgress}
+              />
+            )}
+          </div>
+          <p className="text-brand-brown/80 text-sm leading-relaxed mb-5">
+            {currentStep.instruction}
+          </p>
+          <Button onClick={handleNextStep} className="w-full">
+            {stepIndex + 1 >= scaledSteps.length ? 'Finish' : 'Next Step'}
+          </Button>
+        </Card>
+      )}
+
+      {scaledSteps.slice(stepIndex + 1).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-brand-brown/40 uppercase tracking-wide">
+            Coming up
+          </p>
+          {scaledSteps.slice(stepIndex + 1).map((s, i) => (
+            <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-brand-tan/10">
+              <div className="w-1.5 h-1.5 rounded-full bg-brand-brown/20 flex-shrink-0" />
+              <span className="text-sm text-brand-brown/60">{s.label}</span>
+              {s.durationSeconds > 0 && (
+                <span className="ml-auto text-xs text-brand-brown/40">
+                  {formatTime(s.durationSeconds)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
