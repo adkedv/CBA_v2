@@ -1,16 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 
 export function AuthForm() {
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,19 +26,27 @@ export function AuthForm() {
 
     if (error) {
       setMessage(error.message)
+      setLoading(false)
     } else if (mode === 'signup') {
       setMessage('Check your email to confirm your account.')
+      setLoading(false)
     } else {
-      window.location.href = '/app'
+      router.push('/app')
+      // Don't setLoading(false) — navigation will unmount this component
     }
-    setLoading(false)
   }
 
   async function handleGoogle() {
-    await supabase.auth.signInWithOAuth({
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/app` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
+    if (error) {
+      setMessage('Google sign-in failed. Please try again.')
+      setLoading(false)
+    }
+    // On success: browser redirects to Google, page navigates away
   }
 
   return (
@@ -45,7 +55,7 @@ export function AuthForm() {
         {mode === 'signin' ? 'Welcome back' : 'Create account'}
       </h1>
 
-      <Button variant="secondary" size="lg" onClick={handleGoogle} className="mb-4">
+      <Button variant="secondary" size="lg" onClick={handleGoogle} disabled={loading} className="mb-4">
         Continue with Google
       </Button>
 
@@ -66,10 +76,11 @@ export function AuthForm() {
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder={mode === 'signup' ? 'Password (min. 8 characters)' : 'Password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          minLength={mode === 'signup' ? 8 : undefined}
           className="w-full px-4 py-2.5 rounded-xl border border-brand-tan/40 bg-white text-brand-espresso placeholder:text-brand-tan focus:outline-none focus:border-brand-brown text-sm"
         />
         {message && <p className="text-sm text-center text-brand-amber">{message}</p>}

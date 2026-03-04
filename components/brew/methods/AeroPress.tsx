@@ -68,6 +68,16 @@ export function AeroPress() {
     }
   }, [phase, stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-advance to next step 1.5s after timer reaches 0
+  useEffect(() => {
+    if (phase !== 'brewing') return
+    const step = scaledSteps[stepIndex]
+    if (!step || step.durationSeconds === 0) return
+    if (elapsed < step.durationSeconds) return
+    const t = setTimeout(handleNextStep, 1500)
+    return () => clearTimeout(t)
+  }, [elapsed, stepIndex, phase]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleStart() {
     setPhase('brewing')
     setStepIndex(0)
@@ -134,27 +144,34 @@ export function AeroPress() {
           <h3 className="font-serif text-xl font-bold text-brand-espresso mb-4">
             2. Set Your Dose
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-brand-brown/80 mb-1">
-                Coffee (g)
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-brand-brown/80">Coffee</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={5}
+                    max={30}
+                    value={coffeeGrams}
+                    onChange={(e) => setCoffeeGrams(Math.max(5, Number(e.target.value)))}
+                    className="w-14 text-center font-bold text-brand-espresso bg-brand-tan/20 rounded-lg p-1 border border-transparent focus:border-brand-brown focus:outline-none text-sm"
+                  />
+                  <span className="text-sm text-brand-brown/60">g</span>
+                </div>
+              </div>
               <input
-                type="number"
+                type="range"
                 min={5}
                 max={30}
                 value={coffeeGrams}
-                onChange={(e) => setCoffeeGrams(Math.max(5, Number(e.target.value)))}
-                className="w-full p-3 font-bold text-lg text-brand-espresso bg-brand-tan/20 rounded-lg border border-transparent focus:border-brand-brown focus:outline-none"
+                onChange={(e) => setCoffeeGrams(Number(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-brand-brown bg-brand-brown/20"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-brand-brown/80 mb-1">
-                Water (g)
-              </label>
-              <div className="w-full p-3 font-bold text-lg text-brand-espresso bg-brand-tan/10 rounded-lg">
-                {totalWater}
-              </div>
+            <div className="flex items-center justify-between py-2.5 px-3 bg-brand-tan/10 rounded-lg">
+              <span className="text-sm font-medium text-brand-brown/80">Water</span>
+              <span className="font-bold text-brand-espresso">{totalWater}g</span>
             </div>
           </div>
           <div className="mt-3 text-sm text-brand-brown/60 space-y-0.5">
@@ -246,6 +263,7 @@ export function AeroPress() {
               <CircularTimer
                 seconds={timeLeft}
                 totalSeconds={currentStep.durationSeconds}
+                isRunning={phase === 'brewing' && timeLeft > 0}
               />
             )}
           </div>

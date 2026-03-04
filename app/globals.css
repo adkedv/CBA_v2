@@ -22,6 +22,18 @@
   }
 }
 
+@plugin "@tailwindcss/typography";
+
+@keyframes timer-pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+  50%       { filter: drop-shadow(0 0 10px rgba(92,58,30,0.4)); }
+}
+
+@keyframes timer-urgent-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(220,38,38,0.35)); }
+  50%       { filter: drop-shadow(0 0 18px rgba(220,38,38,0.65)); }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -29,5 +41,11 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  .timer-running {
+    animation: timer-pulse-glow 2.5s ease-in-out infinite;
+  }
+  .timer-urgent {
+    animation: timer-urgent-pulse 1s ease-in-out infinite;
   }
 }

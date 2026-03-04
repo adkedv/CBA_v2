@@ -20,8 +20,8 @@ const METHODS: Method[] = [
   { id: 'iced-v60', label: 'Iced V60', emoji: '🧊' },
   { id: 'aeropress', label: 'AeroPress', emoji: '🔩' },
   { id: 'french-press', label: 'French Press', emoji: '⬛' },
-  { id: 'moka-pot', label: 'Moka Pot', emoji: '🫙' },
-  { id: 'cold-brew', label: 'Cold Brew', emoji: '🫙' },
+  { id: 'moka-pot', label: 'Moka Pot', emoji: '♨️' },
+  { id: 'cold-brew', label: 'Cold Brew', emoji: '⏳' },
 ]
 
 function getStored<T>(key: string, fallback: T): T {
@@ -47,11 +47,14 @@ export function BrewApp() {
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
       {/* Method tabs — horizontal scroll on small screens */}
-      <div className="mb-8 -mx-4 px-4 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
+      <div className="mb-8 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+        <div role="tablist" aria-label="Brew methods" className="flex gap-2 min-w-max">
           {METHODS.map((m) => (
             <button
               key={m.id}
+              role="tab"
+              aria-selected={active === m.id}
+              aria-controls={`panel-${m.id}`}
               onClick={() => handleSelect(m.id)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors whitespace-nowrap ${
                 active === m.id
@@ -59,7 +62,7 @@ export function BrewApp() {
                   : 'bg-brand-tan/20 text-brand-brown hover:bg-brand-tan/40'
               }`}
             >
-              <span className="text-lg">{m.emoji}</span>
+              <span className="text-lg" aria-hidden="true">{m.emoji}</span>
               <span>{m.label}</span>
             </button>
           ))}
