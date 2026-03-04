@@ -98,8 +98,10 @@ export function FrenchPress() {
   }
 
   const currentStep = scaledSteps[stepIndex]
-  const stepProgress =
-    currentStep && currentStep.durationSeconds > 0 ? elapsed / currentStep.durationSeconds : 0
+  const timeLeft =
+    currentStep && currentStep.durationSeconds > 0
+      ? Math.max(0, currentStep.durationSeconds - elapsed)
+      : 0
 
   // ── SETUP ─────────────────────────────────────────────────────────────────
   if (phase === 'setup') {
@@ -259,9 +261,8 @@ export function FrenchPress() {
             </div>
             {currentStep.durationSeconds > 0 && (
               <CircularTimer
-                seconds={currentStep.durationSeconds}
-                elapsed={elapsed}
-                progress={stepProgress}
+                seconds={timeLeft}
+                totalSeconds={currentStep.durationSeconds}
               />
             )}
           </div>

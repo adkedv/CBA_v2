@@ -108,8 +108,10 @@ export function HotV60() {
 
   const allChecked = checklist.every((k) => checked[k])
   const currentStep = scaledSteps[stepIndex]
-  const stepProgress =
-    currentStep && currentStep.durationSeconds > 0 ? elapsed / currentStep.durationSeconds : 0
+  const timeLeft =
+    currentStep && currentStep.durationSeconds > 0
+      ? Math.max(0, currentStep.durationSeconds - elapsed)
+      : 0
 
   // ── SETUP PHASE ──────────────────────────────────────────────────────────
   if (phase === 'setup') {
@@ -304,9 +306,8 @@ export function HotV60() {
             </div>
             {currentStep.durationSeconds > 0 && (
               <CircularTimer
-                seconds={currentStep.durationSeconds}
-                elapsed={elapsed}
-                progress={stepProgress}
+                seconds={timeLeft}
+                totalSeconds={currentStep.durationSeconds}
               />
             )}
           </div>
